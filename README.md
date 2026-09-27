@@ -1,4 +1,4 @@
-# MVP: Pipeline de Dados na Nuvem — Tarifas de Energia Elétrica no Brasil
+# MVP: Pipeline de Dados na Nuvem - Tarifas de Energia Elétrica no Brasil
 
 ## Contexto de Negócios e Perguntas
 
@@ -19,7 +19,6 @@
 | Reclamações no 1º e 2º nível da Distribuidora (2025) | ANEEL — Portal de Dados Abertos | Extração da relação distribuidora → UF → Região → Classificação (Concessionária/Permissionária) | Dado público governamental brasileiro |
 | Bandeiras Tarifárias (Adicional + Acionamento) | ANEEL — Portal de Dados Abertos | Valor histórico de acionamento das bandeiras tarifárias, a partir de jan/2015 | Open Data Commons Open Database License (ODbL) |
 
-
 ---
 
 ## Carga dos Dados
@@ -32,6 +31,8 @@ Os 4 arquivos brutos (CSV) foram baixados diretamente do Portal de Dados Abertos
 - O arquivo de reclamações (`reclamacoes-n1e2-distribuidoras-2025.csv`, ~83 MB) chegou como um **arquivo ZIP**, foi necessário um passo extra de descompactação via código (`zipfile`), documentado no notebook `01_exploracao_bronze`.
 - Script de referência: `01_exploracao_bronze` (blocos 1 a 4) no repositório GitHub.
 
+![Volume com os 4 arquivos brutos no Catalog Explorer](01-mvp.png)
+
 ---
 
 ## Modelagem e Catálogo de Dados
@@ -39,6 +40,8 @@ Os 4 arquivos brutos (CSV) foram baixados diretamente do Portal de Dados Abertos
 **Arquitetura adotada:** Medalhão (Bronze → Silver → Gold), com catálogo `mvp_tarifas_energia` no Unity Catalog do Databricks, um schema por camada.
 
 ### Catálogo: `mvp_tarifas_energia.gold.fato_tarifas_enriquecida`
+
+![Estrutura de colunas da tabela fato_tarifas_enriquecida no Catalog Explorer](02-mvp.png)
 
 **Contexto:** Tabela fato contendo o histórico de tarifas homologadas (TE e TUSD) por distribuidora de energia elétrica brasileira, enriquecida com atributos cadastrais (UF, Região, Classificação). Linhagem: originada da base "Tarifas de aplicação das distribuidoras de energia elétrica" (ANEEL), cruzada com "Reclamações no 1º e 2º nível da Distribuidora" (ANEEL, 2025) via chave `SigAgente` normalizada + tabela de-para manual (47 correspondências de nomenclatura divergente entre fontes, documentadas na etapa de Qualidade de Dados).
 
@@ -64,7 +67,7 @@ Os 4 arquivos brutos (CSV) foram baixados diretamente do Portal de Dados Abertos
 
 ### Catálogo: `mvp_tarifas_energia.silver.dim_distribuidora`
 
-**Contexto:** Tabela dimensão cadastral, extraída (via `SELECT DISTINCT`) da base de Reclamações no 1º e 2º nível da Distribuidora (ANEEL, ano-referência 2025). Usada exclusivamente como fonte de UF, Região e Classificação regulatória de cada distribuidora — os dados de reclamação em si (volume, tipo, prazo de solução) não são utilizados neste trabalho.
+**Contexto:** Tabela dimensão cadastral, extraída (via `SELECT DISTINCT`) da base de Reclamações no 1º e 2º nível da Distribuidora (ANEEL, ano-referência 2025). Usada exclusivamente como fonte de UF, Região e Classificação regulatória de cada distribuidora, os dados de reclamação em si (volume, tipo, prazo de solução) não são utilizados neste trabalho.
 
 | Campo | Descrição | Tipo | Domínio de valores |
 |---|---|---|---|
@@ -104,7 +107,7 @@ Os 4 arquivos brutos (CSV) foram baixados diretamente do Portal de Dados Abertos
 
 ### Catálogo: `mvp_tarifas_energia.gold.fato_bandeira_completa`
 
-**Contexto:** Tabela fato Gold, resultado do cruzamento entre `fato_bandeira_acionamento` e `dim_bandeira_adicional`, respeitando o intervalo de vigência mensal de cada valor homologado (junção por intervalo, não por igualdade simples. Uma mesma bandeira pode ter valores diferentes em períodos diferentes).
+**Contexto:** Tabela fato Gold, resultado do cruzamento entre `fato_bandeira_acionamento` e `dim_bandeira_adicional`, respeitando o intervalo de vigência mensal de cada valor homologado (junção por intervalo, não por igualdade simples, uma mesma bandeira pode ter valores diferentes em períodos diferentes).
 
 | Campo | Descrição | Tipo | Domínio de valores |
 |---|---|---|---|
@@ -114,7 +117,7 @@ Os 4 arquivos brutos (CSV) foram baixados diretamente do Portal de Dados Abertos
 | `VlrHomologadoNaResolucao` | Valor homologado vigente naquele mês (fonte: adicional) | double | R$/MWh, ≥ 0; null para jan/fev de 2015 (não há resolução homologada anterior a mar/2015 na base) |
 | `DscResolucao` | Resolução que homologou o valor vigente naquele mês | string | Ex: "REH nº 1.859/2015"; null nos mesmos casos acima |
 
-**Achado de qualidade:** nas linhas com correspondência, `VlrAdicionalAplicadoNoMes` e `VlrHomologadoNaResolucao` coincidem exatamente — validando a consistência entre as duas fontes de bandeira tarifária.
+**Achado de qualidade:** nas linhas com correspondência, `VlrAdicionalAplicadoNoMes` e `VlrHomologadoNaResolucao` coincidem exatamente, validando a consistência entre as duas fontes de bandeira tarifária.
 
 ---
 
@@ -123,7 +126,7 @@ Os 4 arquivos brutos (CSV) foram baixados diretamente do Portal de Dados Abertos
 O pipeline foi organizado em **2 notebooks**, separando responsabilidades (construção/tratamento vs. análise):
 
 - **`01_exploracao_bronze`**: contém todo o fluxo ETL, do dado bruto à camada Gold.
-  - Blocos 1-4: leitura da camada Bronze (tarifas, bandeiras, reclamações — incluindo a descompactação do ZIP).
+  - Blocos 1-4: leitura da camada Bronze (tarifas, bandeiras, reclamações, incluindo a descompactação do ZIP).
   - Bloco 5: extração e persistência de `silver.dim_distribuidora` (deduplicação de UF/Região/Classificação por distribuidora).
   - Bloco 6: tratamento de tipos (datas, vírgula decimal → double) e persistência de `silver.fato_tarifas`.
   - Bloco 7: tratamento e persistência das tabelas de bandeira Silver.
@@ -134,18 +137,6 @@ O pipeline foi organizado em **2 notebooks**, separando responsabilidades (const
 
 Todas as tabelas foram persistidas como **tabelas Delta gerenciadas** (`saveAsTable`), organizadas em 3 schemas dentro do catálogo `mvp_tarifas_energia`: `bronze` (Volume com arquivos brutos), `silver` (tabelas limpas e tipadas) e `gold` (tabelas de negócio, prontas para responder as perguntas).
 
-<img width="2202" height="1644" alt="image" src="https://github.com/user-attachments/assets/6259eeb5-a7ad-48bb-b952-a213a7b99618" />
-<img width="2204" height="1640" alt="image" src="https://github.com/user-attachments/assets/dbdcdf05-73cb-4360-8dfd-2ec5e200b600" />
-<img width="1678" height="834" alt="image" src="https://github.com/user-attachments/assets/3d921127-8631-4bbb-8d5a-526c3444cf71" />
-<img width="1680" height="844" alt="image" src="https://github.com/user-attachments/assets/1296147f-692e-411c-8760-940eeed03d0c" />
-<img width="1452" height="244" alt="image" src="https://github.com/user-attachments/assets/fa5e2f83-3efc-400e-a3ae-ed9f5208d3c2" />
-<img width="1128" height="844" alt="image" src="https://github.com/user-attachments/assets/0f997ba3-4274-488e-a791-087db2ee6322" />
-<img width="1260" height="396" alt="image" src="https://github.com/user-attachments/assets/9f4cd2f5-ec12-4279-aa9a-a601ace066c7" />
-<img width="1458" height="498" alt="image" src="https://github.com/user-attachments/assets/fd951b1f-7e09-4cee-960f-62406f964825" />
-<img width="1742" height="358" alt="image" src="https://github.com/user-attachments/assets/fd6f402b-8aa9-4187-bdc1-c16992b6eaad" />
-<img width="1462" height="710" alt="image" src="https://github.com/user-attachments/assets/09316fc9-bb56-4dd2-aea9-d0f8b21fa4db" />
-
-
 Scripts de referência: `01_exploracao_bronze` e `02_analise_final` no repositório GitHub.
 
 ---
@@ -154,7 +145,7 @@ Scripts de referência: `01_exploracao_bronze` e `02_analise_final` no repositó
 
 ### Problema 1: Divergência de nomenclatura entre fontes (chave de junção inconsistente)
 
-Ao cruzar `fato_tarifas` com `dim_distribuidora` por `SigAgente`, um JOIN direto resultou em **108 de 197 distribuidoras (55%) sem correspondência** — não por ausência de dados, mas por **divergência sistemática de convenção de nomenclatura** entre as duas bases da própria ANEEL (ex: `COELBA` na base de tarifas vs. `Neoenergia Coelba` no cadastro; `CEMIG-D` vs. `Cemig`; `CPFL-PAULISTA` vs. `CPFL Paulista`).
+Ao cruzar `fato_tarifas` com `dim_distribuidora` por `SigAgente`, um JOIN direto resultou em **108 de 197 distribuidoras (55%) sem correspondência**. Não por ausência de dados, mas por **divergência sistemática de convenção de nomenclatura** entre as duas bases da própria ANEEL (ex: `COELBA` na base de tarifas vs. `Neoenergia Coelba` no cadastro; `CEMIG-D` vs. `Cemig`; `CPFL-PAULISTA` vs. `CPFL Paulista`).
 
 **Tratamento aplicado:**
 1. Normalização de texto (remoção de acentos, padronização de maiúsculas/minúsculas e espaçamento) resolveu parte dos casos mecânicos.
@@ -179,21 +170,37 @@ Uma primeira versão da normalização automática usava regex para remover sufi
 
 ### Pergunta 1: Quais distribuidoras/estados têm as tarifas mais altas e mais baixas?
 
+![Tarifas mais altas por distribuidora](03-mvp.png)
+
+![Tarifas mais baixas por distribuidora](04-mvp.png)
+
 Tarifas mais altas concentradas em cooperativas rurais pequenas (Ceral Araruama, Cerci, Ceres, Coopernorte, Certrel — TUSD média R$500-950/MWh). Tarifas mais baixas em grandes distribuidoras urbanas (RGE, Celesc, Copel, CPFL Paulista, Elektro, Cemig-D — TUSD média R$67-150/MWh). Hipótese: economia de escala, menor densidade populacional implica maior custo de distribuição por consumidor.
 
 ### Pergunta 2: Relação entre Concessionária vs. Permissionária e tarifa
+
+![Tarifa média por classificação regulatória](05-mvp.png)
 
 Permissionária tem TUSD média R$437,01/MWh (48 distribuidoras) vs. Concessionária R$203,99/MWh (56 distribuidoras): mais que o dobro, confirmando a hipótese da Pergunta 1.
 
 ### Pergunta 3: Evolução das tarifas ao longo do tempo
 
+![Tarifa média por ano (2010-2026)](06-mvp.png)
+
+![Gráfico de evolução da tarifa média por ano](10-mvp.png)
+
 TUSD média cresce quase 5x de 2010 (R$91,37/MWh) a 2026 (R$453,81/MWh), com salto expressivo a partir de 2021-2022. TE média oscila sem tendência clara (R$60-125/MWh), sugere que o componente de distribuição (TUSD), não o de energia (TE), é o principal motor do aumento das tarifas ao longo do tempo.
 
 ### Pergunta 4: Relação entre região geográfica e nível de tarifa
 
+![Tarifa média por região](07-mvp.png)
+
+![Tarifa média por região, controlando por classificação regulatória](08-mvp.png)
+
 Tarifa regional bruta mostra N (R$316), S (R$297), SE (R$259) mais caros e CO (R$197) mais barato. Ao controlar por classificação, Concessionárias ficam homogêneas entre regiões (R$170-238, exceto N com R$316 por fatores logísticos), enquanto Permissionárias disparam (R$390-590). Sul concentra 32 das permissionárias do país (vs. 15 no SE, 1 no NE, 0 em CO/N). A "tarifa regional alta" é majoritariamente efeito de composição (concentração de cooperativas), não característica geográfica pura.
 
 ### Pergunta 5: Impacto das bandeiras tarifárias na conta final
+
+![Impacto médio por tipo de bandeira tarifária](09-mvp.png)
 
 Impacto cresce por severidade: Verde (67 meses, R$0), Amarela (25 meses, R$16,01/MWh), Vermelha P1 (26 meses, R$43,14/MWh), Vermelha P2 (15 meses, R$62,07/MWh), Escassez Hídrica (8 meses, R$133,13/MWh — quase 8x a Amarela). Escassez Hídrica sozinha mais que dobra a TE média recente (~R$104/MWh).
 
