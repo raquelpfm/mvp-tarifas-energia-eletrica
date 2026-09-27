@@ -134,7 +134,17 @@ O pipeline foi organizado em **2 notebooks**, separando responsabilidades (const
 
 Todas as tabelas foram persistidas como **tabelas Delta gerenciadas** (`saveAsTable`), organizadas em 3 schemas dentro do catálogo `mvp_tarifas_energia`: `bronze` (Volume com arquivos brutos), `silver` (tabelas limpas e tipadas) e `gold` (tabelas de negócio, prontas para responder as perguntas).
 
-*(incluir aqui na versão final do repositório screenshots das tabelas persistidas no Catalog Explorer)*
+<img width="2202" height="1644" alt="image" src="https://github.com/user-attachments/assets/6259eeb5-a7ad-48bb-b952-a213a7b99618" />
+<img width="2204" height="1640" alt="image" src="https://github.com/user-attachments/assets/dbdcdf05-73cb-4360-8dfd-2ec5e200b600" />
+<img width="1678" height="834" alt="image" src="https://github.com/user-attachments/assets/3d921127-8631-4bbb-8d5a-526c3444cf71" />
+<img width="1680" height="844" alt="image" src="https://github.com/user-attachments/assets/1296147f-692e-411c-8760-940eeed03d0c" />
+<img width="1452" height="244" alt="image" src="https://github.com/user-attachments/assets/fa5e2f83-3efc-400e-a3ae-ed9f5208d3c2" />
+<img width="1128" height="844" alt="image" src="https://github.com/user-attachments/assets/0f997ba3-4274-488e-a791-087db2ee6322" />
+<img width="1260" height="396" alt="image" src="https://github.com/user-attachments/assets/9f4cd2f5-ec12-4279-aa9a-a601ace066c7" />
+<img width="1458" height="498" alt="image" src="https://github.com/user-attachments/assets/fd951b1f-7e09-4cee-960f-62406f964825" />
+<img width="1742" height="358" alt="image" src="https://github.com/user-attachments/assets/fd6f402b-8aa9-4187-bdc1-c16992b6eaad" />
+<img width="1462" height="710" alt="image" src="https://github.com/user-attachments/assets/09316fc9-bb56-4dd2-aea9-d0f8b21fa4db" />
+
 
 Scripts de referência: `01_exploracao_bronze` e `02_analise_final` no repositório GitHub.
 
@@ -165,7 +175,7 @@ Uma primeira versão da normalização automática usava regex para remover sufi
 
 ---
 
-## Análise de Dados (Etapa 4.5)
+## Análise de Dados
 
 ### Pergunta 1: Quais distribuidoras/estados têm as tarifas mais altas e mais baixas?
 
